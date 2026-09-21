@@ -1,0 +1,32 @@
+syntax  = "proto3";
+
+package exchange;
+
+option go_package = "github.com/TwistZZ75/currency_exchange_service/proto-exchange/exchange";
+
+//определяем сервис
+service ExchangeService{
+    //курс обмена всех валют
+    rpc GetExchangeMap(Empty) returns (ExchangeMapResponse);
+    
+    //курс обмена для конкретной валюты
+    rpc GetExchangeRateForCurrency(CurrencyRequest) returns (ExchangeRateResponse);
+}
+
+message Empty {}
+
+//запрос на получение курса обмена для конкретной валюты
+message CurrencyRequest {
+    string from_currency = 1;
+    string to_currency = 2;
+}
+
+message ExchangeRateResponse {
+    string from_currency = 1;
+    string to_currency = 2;
+    float rate = 3;
+}
+
+message ExchangeMapResponse {
+    map<string, float> rates = 1; //валюта: значение
+}
