@@ -1,0 +1,11 @@
+.git
+.gitignore
+
+*/config.env
+**/.env
+
+docker-compose*.yml
+
+**/*.md
+**/docs/
+**/tests/

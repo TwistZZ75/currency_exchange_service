@@ -23,18 +23,22 @@ type Config struct {
 }
 
 func Load(path string) (*Config, error) {
-	if err := godotenv.Load(path); err != nil {
-		return nil, fmt.Errorf("env load err %q: %w", path, err)
+	if path != "" {
+		if _, err := os.Stat(path); err == nil {
+			if err := godotenv.Load(path); err != nil {
+				return nil, fmt.Errorf("load %q: %w", path, err)
+			}
+		}
 	}
 
 	cfg := &Config{
 		GRPCPort:   os.Getenv("GRPC_PORT"),
-		DBHost:     os.Getenv("DB_HOST"),
-		DBPort:     os.Getenv("DB_PORT"),
-		DBUser:     os.Getenv("DB_USER"),
-		DBPassword: os.Getenv("DB_PASSWORD"),
-		DBName:     os.Getenv("DB_NAME"),
-		DBSSLMode:  os.Getenv("DB_SSLMODE"),
+		DBHost:     os.Getenv("POSTGRES_HOST"),
+		DBPort:     os.Getenv("POSTGRES_PORT"),
+		DBUser:     os.Getenv("POSTGRES_USER"),
+		DBPassword: os.Getenv("POSTGRES_PASSWORD"),
+		DBName:     os.Getenv("POSTGRES_DB"),
+		DBSSLMode:  os.Getenv("POSTGRES_SSLMODE"),
 	}
 
 	level, err := parseLogLevel(os.Getenv("LOG_LEVEL"))

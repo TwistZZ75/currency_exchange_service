@@ -26,7 +26,7 @@ func NewServer(storage storages.Storage, logger *slog.Logger) *Server {
 	}
 }
 
-func (s *Server) GetExchangeRates(ctx context.Context, _ *pb.Empty) (*pb.ExchangeMapResponse, error) {
+func (s *Server) GetExchangeMap(ctx context.Context, _ *pb.Empty) (*pb.ExchangeMapResponse, error) {
 	rates, err := s.storage.GetMap(ctx)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "get exchange rates failed", "error", err)

@@ -63,7 +63,6 @@ func run() error {
 
 	pb.RegisterExchangeServiceServer(grpcServer, server.NewServer(storage, log))
 
-	// Health + reflection (удобно для grpcurl/grpc-health-probe).
 	healthSrv := health.NewServer()
 	healthSrv.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(grpcServer, healthSrv)
