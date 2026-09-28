@@ -55,13 +55,58 @@ services:
     depends_on:
       wallet-db:
         condition: service_healthy
+      kafka:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
     env_file:
       - ./gw-currency-wallet/config.env
     ports:
       - "8080:8080"
     restart: unless-stopped
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: gw_kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    environment:
+      #  KRaft: узел является и брокером, и контроллером 
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+  kafka-init: #инициализация топика при старте кафки
+    image: confluentinc/cp-kafka:7.6.0
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "
+      cub kafka-ready -b kafka:9092 1 30 &&
+      kafka-topics --create
+      --if-not-exists
+      --topic large_transfers
+      --bootstrap-server kafka:9092
+      --partitions 1
+      --replication-factor 1
+      "
 
 volumes:
   exchanger-pgdata:
   wallet-pgdata:
+  kafka-data:
 

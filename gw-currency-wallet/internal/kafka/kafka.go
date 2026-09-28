@@ -11,9 +11,9 @@ import (
 )
 
 type Producer struct {
-	writer     *kafka.Writer
-	topic      string
-	threshhold float64
+	writer    *kafka.Writer
+	topic     string
+	threshold float64
 }
 
 func NewProducer(brokers []string, topic string, threshold float64) *Producer {
@@ -25,8 +25,8 @@ func NewProducer(brokers []string, topic string, threshold float64) *Producer {
 			RequiredAcks: kafka.RequireOne,
 			Async:        false,
 		},
-		topic:      topic,
-		threshhold: threshold,
+		topic:     topic,
+		threshold: threshold,
 	}
 }
 
@@ -35,7 +35,7 @@ func (p *Producer) Close() error { return p.writer.Close() }
 // SendIfLarge отправляет событие, если сумма больше или равна порогу
 // Возвращает nil, если меньше
 func (p *Producer) SendIfLarge(ctx context.Context, ev domain.TransferEvent) error {
-	if ev.Amount < p.threshhold {
+	if ev.Amount < p.threshold {
 		return nil
 	}
 	data, err := json.Marshal(ev)
