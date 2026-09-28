@@ -30,5 +30,38 @@ services:
       - "50051:50051"
     restart: unless-stopped
 
+  wallet-db:
+    image: postgres:16-alpine
+    container_name: gw_wallet_postgres
+    restart: unless-stopped
+    env_file:
+      - ./gw-currency-wallet/config.env
+    volumes:
+      - wallet-pgdata:/var/lib/postgresql/data
+      - ./gw-currency-wallet/internal/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  gw-currency-wallet:
+    build:
+      context: .
+      dockerfile: gw-currency-wallet/Dockerfile
+    container_name: gw_wallet
+    depends_on:
+      wallet-db:
+        condition: service_healthy
+    env_file:
+      - ./gw-currency-wallet/config.env
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
 volumes:
   exchanger-pgdata:
+  wallet-pgdata:
+
