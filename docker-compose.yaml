@@ -89,24 +89,183 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     volumes:
       - kafka-data:/var/lib/kafka/data
-  kafka-init: #инициализация топика при старте кафки
+  kafka-init:
     image: confluentinc/cp-kafka:7.6.0
+    container_name: gw_kafka_init
     depends_on:
-      - kafka
+      kafka:
+        condition: service_started
     entrypoint: ["/bin/sh", "-c"]
-    command: >
-      "
-      cub kafka-ready -b kafka:9092 1 30 &&
-      kafka-topics --create
-      --if-not-exists
-      --topic large_transfers
-      --bootstrap-server kafka:9092
-      --partitions 1
-      --replication-factor 1
-      "
+    command:
+      - |
+        echo "Waiting for Kafka..."
+        cub kafka-ready -b kafka:9092 1 60
+        echo "Creating topics..."
+        kafka-topics --create --if-not-exists \
+          --topic large_transfers \
+          --bootstrap-server kafka:9092 \
+          --partitions 1 --replication-factor 1
+        kafka-topics --create --if-not-exists \
+          --topic large_transfers_dlq \
+          --bootstrap-server kafka:9092 \
+          --partitions 1 --replication-factor 1
+        echo "Topics ready:"
+        kafka-topics --list --bootstrap-server kafka:9092
+    restart: "no"
+
+  mongo:
+    image: mongo:7
+    container_name: gw_notifier_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' | grep 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  gw-notifier:
+    build:
+      context: .
+      dockerfile: gw-notifier/Dockerfile
+    container_name: gw_notifier
+    depends_on:
+      mongo:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BROKERS:        "kafka:9092"
+      KAFKA_TOPIC:          "large_transfers"
+      KAFKA_DLQ_TOPIC:      "large_transfers_dlq"
+      KAFKA_GROUP_ID:       "gw-notifier"
+
+      MONGO_URI:            "mongodb://mongo:27017"
+      MONGO_DB:             "notification"
+      MONGO_COLLECTION:     "large_transfers"
+      MONGO_TIMEOUT:        "5s"
+
+      BATCH_SIZE:           "100"
+      BATCH_TIMEOUT:        "1s"
+      QUEUE_SIZE:           "2000"
+
+      RETRY_MAX_ATTEMPTS:   "5"
+      RETRY_INITIAL:        "100ms"
+      RETRY_MAX:            "5s"
+
+      METRICS_ENABLED:      "true"
+      METRICS_PORT:         "9090"
+
+      LOG_LEVEL:            "info"
+      SHUTDOWN_TIMEOUT:     "15s"
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24-alpine
+    container_name: gw_analytics_clickhouse
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: analytics
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      - "8123:8123"   # HTTP
+      - "9000:9000"   # native
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  clickhouse-init:
+    image: clickhouse/clickhouse-server:24-alpine
+    container_name: gw_analytics_clickhouse_init
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ./gw-analytics/internal/migrations/init.sql:/init.sql:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for ClickHouse..."
+        for i in 1 2 3 4 5 6 7 8 9 10; do
+          clickhouse-client --host clickhouse --query "SELECT 1" && break
+          sleep 2
+        done
+        echo "Applying migration..."
+        clickhouse-client --host clickhouse --multiquery --queries-file /init.sql
+        echo "Migration applied"
+    restart: "no"
+
+  gw-analytics:
+    build:
+      context: .
+      dockerfile: gw-analytics/Dockerfile
+    container_name: gw_analytics
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      clickhouse-init:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BROKERS:        "kafka:9092"
+      KAFKA_TOPIC:          "large_transfers"
+      KAFKA_DLQ_TOPIC:      "large_transfers_dlq"
+      KAFKA_GROUP_ID:       "gw-analytics"
+
+      CLICKHOUSE_ADDR:      "clickhouse:9000"
+      CLICKHOUSE_DB:        "analytics"
+      CLICKHOUSE_USER:      "default"
+      CLICKHOUSE_PASSWORD:  ""
+      CLICKHOUSE_TIMEOUT:   "5s"
+
+      BATCH_SIZE:           "500"
+      BATCH_TIMEOUT:        "1s"
+      QUEUE_SIZE:           "5000"
+
+      RETRY_MAX_ATTEMPTS:   "5"
+      RETRY_INITIAL:        "200ms"
+      RETRY_MAX:            "10s"
+
+      HTTP_PORT:            "8082"
+      HTTP_READ_TIMEOUT:    "10s"
+      HTTP_WRITE_TIMEOUT:   "10s"
+
+      METRICS_ENABLED:      "true"
+      METRICS_PORT:         "9093"
+
+      LOG_LEVEL:            "info"
+      SHUTDOWN_TIMEOUT:     "20s"
+    ports:
+      - "8082:8082"
+      - "9093:9093"
+    restart: unless-stopped
 
 volumes:
   exchanger-pgdata:
   wallet-pgdata:
   kafka-data:
+  mongo-data:
+  clickhouse-data:
 

@@ -2,6 +2,7 @@ FROM golang:1.26-alpine3.24 AS builder
 
 ENV GOWORK=off
 
+
 WORKDIR /src
 
 COPY proto-exchange/ /src/proto-exchange/
