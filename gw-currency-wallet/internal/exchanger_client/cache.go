@@ -6,16 +6,25 @@ import (
 	"time"
 )
 
+type RatesFetcher interface {
+	GetMap(ctx context.Context) (map[string]float64, error)
+}
+
+// NewCachedRatesWithFetcher -конструктор для тестов
+func NewCachedRatesWithFetcher(f RatesFetcher, ttl time.Duration) *CachedRates {
+	return &CachedRates{fetcher: f, ttl: ttl}
+}
+
 type CachedRates struct {
-	mu    sync.RWMutex
-	rates map[string]float64
-	at    time.Time
-	ttl   time.Duration
-	cli   *Client
+	mu      sync.RWMutex
+	rates   map[string]float64
+	at      time.Time
+	ttl     time.Duration
+	fetcher RatesFetcher
 }
 
 func NewCachedRates(cli *Client, ttl time.Duration) *CachedRates {
-	return &CachedRates{cli: cli, ttl: ttl}
+	return &CachedRates{fetcher: cli, ttl: ttl}
 }
 
 // Get возвращает курсы: если кэш свежий из памяти, иначе идёт в gRPC
@@ -34,7 +43,7 @@ func (c *CachedRates) Get(ctx context.Context) (map[string]float64, error) {
 		return c.rates, nil
 	}
 
-	rates, err := c.cli.GetMap(ctx)
+	rates, err := c.fetcher.GetMap(ctx)
 	if err != nil {
 		return nil, err
 	}

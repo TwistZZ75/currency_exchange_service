@@ -1,19 +1,28 @@
 package service
 
 import (
+	"context"
 	"log/slog"
 
 	"gw-currency-wallet/internal/auth"
-	exchanger "gw-currency-wallet/internal/exchanger_client"
-	"gw-currency-wallet/internal/kafka"
+	"gw-currency-wallet/internal/domain"
 	"gw-currency-wallet/internal/storages"
 )
+
+type RatesProvider interface {
+	Get(ctx context.Context) (map[string]float64, error)
+	Invalidate()
+}
+
+type EventPublisher interface {
+	SendIfLarge(ctx context.Context, ev domain.TransferEvent) error
+}
 
 type Service struct {
 	Storage        storages.Storage
 	JWT            *auth.JWTManager
-	Rates          *exchanger.CachedRates
-	Producer       *kafka.Producer
+	Rates          RatesProvider
+	Producer       EventPublisher
 	Logger         *slog.Logger
 	LargeThreshold float64
 }

@@ -44,7 +44,18 @@ func parsePeriodRange(c *gin.Context) (time.Time, time.Time, string, bool) {
 	return from, to, period, true
 }
 
-// Counts — GET /api/v1/analytics/events?period=1m
+// Counts — GET /api/v1/analytics/events
+//
+// @Summary      Количество событий по типам/статусам
+// @Tags         analytics
+// @Produce      json
+// @Param        period query string false "Период агрегации: 1m, 5m, 1h, 1d, 1w" default(1m)
+// @Param        from   query string false "RFC3339, начало (по умолчанию — час назад)"
+// @Param        to     query string false "RFC3339, конец (по умолчанию — сейчас)"
+// @Success      200 {object} map[string]interface{}
+// @Failure      400 {object} map[string]string "error"
+// @Failure      500 {object} map[string]string "error"
+// @Router       /api/v1/analytics/events [get]
 func (h *Handlers) Counts(c *gin.Context) {
 	from, to, period, ok := parsePeriodRange(c)
 	if !ok {
@@ -63,7 +74,16 @@ func (h *Handlers) Counts(c *gin.Context) {
 	})
 }
 
-// Latency — GET /api/v1/analytics/latency?period=1m
+// Latency — GET /api/v1/analytics/latency
+//
+// @Summary      Статистика latency
+// @Tags         analytics
+// @Produce      json
+// @Param        period query string false "Период агрегации" default(1m)
+// @Success      200 {object} map[string]interface{}
+// @Failure      400 {object} map[string]string "error"
+// @Failure      500 {object} map[string]string "error"
+// @Router       /api/v1/analytics/latency [get]
 func (h *Handlers) Latency(c *gin.Context) {
 	from, to, period, ok := parsePeriodRange(c)
 	if !ok {
@@ -82,7 +102,16 @@ func (h *Handlers) Latency(c *gin.Context) {
 	})
 }
 
-// Errors — GET /api/v1/analytics/errors?period=1m
+// Errors — GET /api/v1/analytics/errors
+//
+// @Summary      Частота ошибок
+// @Tags         analytics
+// @Produce      json
+// @Param        period query string false "Период агрегации" default(1m)
+// @Success      200 {object} map[string]interface{}
+// @Failure      400 {object} map[string]string "error"
+// @Failure      500 {object} map[string]string "error"
+// @Router       /api/v1/analytics/errors [get]
 func (h *Handlers) Errors(c *gin.Context) {
 	from, to, period, ok := parsePeriodRange(c)
 	if !ok {

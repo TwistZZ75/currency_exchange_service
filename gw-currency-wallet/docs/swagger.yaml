@@ -1,0 +1,350 @@
+basePath: /
+definitions:
+  internal_handlers.amountReq:
+    properties:
+      amount:
+        type: number
+      currency:
+        type: string
+    required:
+    - amount
+    - currency
+    type: object
+  internal_handlers.exchangeReq:
+    properties:
+      amount:
+        type: number
+      from_currency:
+        type: string
+      to_currency:
+        type: string
+    required:
+    - amount
+    - from_currency
+    - to_currency
+    type: object
+  internal_handlers.loginReq:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  internal_handlers.registerReq:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      username:
+        maxLength: 32
+        minLength: 3
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: |-
+    REST API кошелька с обменом валют (USD/RUB/EUR).
+    Поддерживает регистрацию, логин (JWT), баланс, пополнение, вывод, обмен валют.
+  termsOfService: http://swagger.io/terms/
+  title: gw-currency-wallet API
+  version: "1.0"
+paths:
+  /api/v1/balance:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: balance
+          schema:
+            additionalProperties:
+              additionalProperties:
+                format: float64
+                type: number
+              type: object
+            type: object
+        "401":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Баланс пользователя
+      tags:
+      - wallet
+  /api/v1/exchange:
+    post:
+      consumes:
+      - application/json
+      description: Идемпотентен по Idempotency-Key. При повторном вызове возвращает
+        сохранённый rate/exchanged_amount.
+      parameters:
+      - description: Опциональный ключ идемпотентности (UUID)
+        in: header
+        name: Idempotency-Key
+        type: string
+      - description: Пара валют и сумма
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.exchangeReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message + exchanged_amount + rate + new_balance
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обмен валюты
+      tags:
+      - exchange
+  /api/v1/exchange/rates:
+    get:
+      description: Возвращает курсы всех поддерживаемых валют. Источник — gw-exchanger
+        по gRPC, кэш 30 сек.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: rates
+          schema:
+            additionalProperties:
+              additionalProperties:
+                format: float64
+                type: number
+              type: object
+            type: object
+        "401":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Курсы валют
+      tags:
+      - exchange
+  /api/v1/login:
+    post:
+      consumes:
+      - application/json
+      description: Возвращает JWT-токен. TTL задаётся в конфиге (JWT_TTL).
+      parameters:
+      - description: Учётные данные
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.loginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Авторизация
+      tags:
+      - auth
+  /api/v1/register:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт пользователя и пустой кошелёк. Проверяет уникальность username
+        и email.
+      parameters:
+      - description: Данные регистрации
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.registerReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Регистрация нового пользователя
+      tags:
+      - auth
+  /api/v1/wallet/deposit:
+    post:
+      consumes:
+      - application/json
+      description: Идемпотентен по заголовку Idempotency-Key. При сумме >= LARGE_TRANSFER_THRESHOLD
+        событие уходит в Kafka.
+      parameters:
+      - description: Опциональный ключ идемпотентности (UUID)
+        in: header
+        name: Idempotency-Key
+        type: string
+      - description: Сумма и валюта
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.amountReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message + new_balance
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Пополнение счёта
+      tags:
+      - wallet
+  /api/v1/wallet/withdraw:
+    post:
+      consumes:
+      - application/json
+      description: Идемпотентен по заголовку Idempotency-Key.
+      parameters:
+      - description: Опциональный ключ идемпотентности (UUID)
+        in: header
+        name: Idempotency-Key
+        type: string
+      - description: Сумма и валюта
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handlers.amountReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message + new_balance
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Вывод средств
+      tags:
+      - wallet
+securityDefinitions:
+  BearerAuth:
+    description: Введите "Bearer <token>", полученный при логине через POST /api/v1/login
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

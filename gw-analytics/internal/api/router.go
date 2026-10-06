@@ -8,6 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"gw-analytics/internal/metrics"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "gw-analytics/docs"
 )
 
 func NewRouter(h *Handlers) *gin.Engine {
@@ -25,6 +30,9 @@ func NewRouter(h *Handlers) *gin.Engine {
 		api.GET("/latency", h.Latency)
 		api.GET("/errors", h.Errors)
 	}
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	return r
 }
 

@@ -20,6 +20,17 @@ type loginReq struct {
 }
 
 // Register — POST /api/v1/register
+//
+// @Summary      Регистрация нового пользователя
+// @Description  Создаёт пользователя и пустой кошелёк. Проверяет уникальность username и email.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body registerReq true "Данные регистрации"
+// @Success      201 {object} map[string]string "message"
+// @Failure      400 {object} map[string]string "error"
+// @Failure      500 {object} map[string]string "error"
+// @Router       /api/v1/register [post]
 func (h *Handlers) Register(c *gin.Context) {
 	var req registerReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -39,6 +50,17 @@ func (h *Handlers) Register(c *gin.Context) {
 }
 
 // Login — POST /api/v1/login
+//
+// @Summary      Авторизация
+// @Description  Возвращает JWT-токен. TTL задаётся в конфиге (JWT_TTL).
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body loginReq true "Учётные данные"
+// @Success      200 {object} map[string]string "token"
+// @Failure      400 {object} map[string]string "error"
+// @Failure      401 {object} map[string]string "error"
+// @Router       /api/v1/login [post]
 func (h *Handlers) Login(c *gin.Context) {
 	var req loginReq
 	if err := c.ShouldBindJSON(&req); err != nil {

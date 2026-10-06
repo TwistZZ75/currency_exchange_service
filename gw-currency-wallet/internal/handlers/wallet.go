@@ -15,6 +15,15 @@ type amountReq struct {
 }
 
 // Balance — GET /api/v1/balance
+//
+// @Summary      Баланс пользователя
+// @Tags         wallet
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} map[string]map[string]float64 "balance"
+// @Failure      401 {object} map[string]string "error"
+// @Failure      500 {object} map[string]string "error"
+// @Router       /api/v1/balance [get]
 func (h *Handlers) Balance(c *gin.Context) {
 	userID := middleware.UserID(c)
 	w, err := h.Svc.GetWallet(c.Request.Context(), userID)
@@ -33,6 +42,20 @@ func (h *Handlers) Balance(c *gin.Context) {
 }
 
 // Deposit — POST /api/v1/wallet/deposit
+//
+// @Summary      Пополнение счёта
+// @Description  Идемпотентен по заголовку Idempotency-Key. При сумме >= LARGE_TRANSFER_THRESHOLD событие уходит в Kafka.
+// @Tags         wallet
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Idempotency-Key header string false "Опциональный ключ идемпотентности (UUID)"
+// @Param        request body amountReq true "Сумма и валюта"
+// @Success      200 {object} map[string]interface{} "message + new_balance"
+// @Failure      400 {object} map[string]string "error"
+// @Failure      401 {object} map[string]string "error"
+// @Failure      500 {object} map[string]string "error"
+// @Router       /api/v1/wallet/deposit [post]
 func (h *Handlers) Deposit(c *gin.Context) {
 	userID := middleware.UserID(c)
 
@@ -63,6 +86,20 @@ func (h *Handlers) Deposit(c *gin.Context) {
 }
 
 // Withdraw — POST /api/v1/wallet/withdraw
+//
+// @Summary      Вывод средств
+// @Description  Идемпотентен по заголовку Idempotency-Key.
+// @Tags         wallet
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Idempotency-Key header string false "Опциональный ключ идемпотентности (UUID)"
+// @Param        request body amountReq true "Сумма и валюта"
+// @Success      200 {object} map[string]interface{} "message + new_balance"
+// @Failure      400 {object} map[string]string "error"
+// @Failure      401 {object} map[string]string "error"
+// @Failure      500 {object} map[string]string "error"
+// @Router       /api/v1/wallet/withdraw [post]
 func (h *Handlers) Withdraw(c *gin.Context) {
 	userID := middleware.UserID(c)
 

@@ -16,6 +16,16 @@ type exchangeReq struct {
 }
 
 // Rates — GET /api/v1/exchange/rates
+//
+// @Summary      Курсы валют
+// @Description  Возвращает курсы всех поддерживаемых валют. Источник — gw-exchanger по gRPC, кэш 30 сек.
+// @Tags         exchange
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} map[string]map[string]float64 "rates"
+// @Failure      401 {object} map[string]string "error"
+// @Failure      500 {object} map[string]string "error"
+// @Router       /api/v1/exchange/rates [get]
 func (h *Handlers) Rates(c *gin.Context) {
 	rates, err := h.Svc.GetRates(c.Request.Context())
 	if err != nil {
@@ -27,6 +37,20 @@ func (h *Handlers) Rates(c *gin.Context) {
 }
 
 // Exchange — POST /api/v1/exchange
+//
+// @Summary      Обмен валюты
+// @Description  Идемпотентен по Idempotency-Key. При повторном вызове возвращает сохранённый rate/exchanged_amount.
+// @Tags         exchange
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        Idempotency-Key header string false "Опциональный ключ идемпотентности (UUID)"
+// @Param        request body exchangeReq true "Пара валют и сумма"
+// @Success      200 {object} map[string]interface{} "message + exchanged_amount + rate + new_balance"
+// @Failure      400 {object} map[string]string "error"
+// @Failure      401 {object} map[string]string "error"
+// @Failure      500 {object} map[string]string "error"
+// @Router       /api/v1/exchange [post]
 func (h *Handlers) Exchange(c *gin.Context) {
 	userID := middleware.UserID(c)
 

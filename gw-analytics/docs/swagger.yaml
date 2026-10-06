@@ -1,0 +1,110 @@
+basePath: /
+host: localhost:8082
+info:
+  contact: {}
+  description: 'Аналитика крупных денежных переводов: агрегации по периодам.'
+  title: gw-analytics API
+  version: "1.0"
+paths:
+  /api/v1/analytics/errors:
+    get:
+      parameters:
+      - default: 1m
+        description: Период агрегации
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Частота ошибок
+      tags:
+      - analytics
+  /api/v1/analytics/events:
+    get:
+      parameters:
+      - default: 1m
+        description: 'Период агрегации: 1m, 5m, 1h, 1d, 1w'
+        in: query
+        name: period
+        type: string
+      - description: RFC3339, начало (по умолчанию — час назад)
+        in: query
+        name: from
+        type: string
+      - description: RFC3339, конец (по умолчанию — сейчас)
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Количество событий по типам/статусам
+      tags:
+      - analytics
+  /api/v1/analytics/latency:
+    get:
+      parameters:
+      - default: 1m
+        description: Период агрегации
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Статистика latency
+      tags:
+      - analytics
+swagger: "2.0"

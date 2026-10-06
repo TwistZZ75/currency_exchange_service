@@ -9,6 +9,11 @@ import (
 	"gw-currency-wallet/internal/auth"
 	"gw-currency-wallet/internal/handlers"
 	"gw-currency-wallet/internal/middleware"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "gw-currency-wallet/docs"
 )
 
 func New(h *handlers.Handlers, jwt *auth.JWTManager, log *slog.Logger) *gin.Engine {
@@ -36,6 +41,8 @@ func New(h *handlers.Handlers, jwt *auth.JWTManager, log *slog.Logger) *gin.Engi
 			authed.POST("/exchange", h.Exchange)
 		}
 	}
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	return r
 }
